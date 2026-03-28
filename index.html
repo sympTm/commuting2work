@@ -193,12 +193,12 @@ const M = {
 
   solar:`<b>Solární nabíjení:</b><div class="tip-section">Předpoklad: máte vlastní fotovoltaiku s dostatečným výkonem pro nabíjení.<br><br>Marginální cena elektřiny = 0 Kč/kWh (sluneční energie navíc, kterou byste jinak nevyužili nebo prodali za nižší výkupní cenu).</div>`,
 
-  km:`<b>Výpočet km:</b><div class="tip-section">\u2022 Denní km = vzdálenost \u00d7 2 (tam + zpět)<br>\u2022 Měsíční km = denní km \u00d7 pracovní dny<br>\u2022 Pracovní dny = 21 \u2013 (HO dny/týden \u00d7 21/5)<br><br>Předpoklad: 21 pracovních dní v měsíci.</div>`,
+  km:()=>{const _dk=state.dist*2,_days=C.workDays-state.ho*(C.workDays/5),_mk=_days*_dk;return `<b>Výpočet km:</b><div class="tip-section">\u2022 Denní dojezd = ${_dk} km (tam + zpět)<br>\u2022 Dny v kanceláři = 21 \u2212 ${state.ho} HO/týden \u00d7 4,2 = <b>${Math.round(_days*10)/10} dní/měs</b><br>\u2022 Měsíční km = ${_dk} \u00d7 ${Math.round(_days*10)/10} = <b>${fmt(Math.round(_mk))} km</b><br><br><span style="color:#6b7280">Koef. 4,2 = 21 prac. dní \u00f7 5 dní v týdnu</span></div>`},
 
   custom:`<b>Vlastní cena elektřiny:</b><div class="tip-section">Zadejte vlastní cenu za 1 kWh. Použijte, pokud máte speciální tarif, firemní nabíjení, nebo jinou situaci, která neodpovídá předvolbám.</div>`,
 };
 
-function info(key){return `<span class="info-icon">i<span class="tip">${M[key]}</span></span>`}
+function info(key){const v=typeof M[key]==='function'?M[key]():M[key];return `<span class="info-icon">i<span class="tip">${v}</span></span>`}
 
 function compute(){
   const cp=getChargePrice(), tc=getTeslaCons(), fp=getFuelPrice();
@@ -305,7 +305,7 @@ function render(){
   const last=data[11],diff=last.tCum-last.eCum,dk=getDailyKm(),fl=getFuelLabel(),tl=getTeslaLabel();
   let chart="";
   if(state.view==="cumulative")chart=svgCumulative(data);else if(state.view==="monthly")chart=svgMonthly(data);else if(state.view==="breakdown")chart=svgBreakdown(data);else if(state.view==="fuel-cumulative")chart=svgFuelCumulative(data);else chart=svgFuelMonthly(data);
-  const costs=[0,1,2,3].map(h=>monthlyCostCalc(h,cp));
+  const costs=[0,1,2,3,4,5].map(h=>monthlyCostCalc(h,cp));
   const isCust=state.carPreset==="custom";
 
   // Charging buttons including custom
@@ -318,18 +318,30 @@ function render(){
   ];
 
   document.getElementById("app").innerHTML=`
-  <div style="margin-bottom:20px">
-    <h1>Ro\u010dn\u00ed n\u00e1klady na doj\u00ed\u017ed\u011bn\u00ed</h1>
-    <p class="sub">${state.routeFrom} \u2192 ${state.routeTo} \u00b7 ${state.dist} km \u00d7 2 = ${dk} km/den ${info("km")}</p>
+  <div style="margin-bottom:24px;padding:24px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.07);border-radius:20px">
+    <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.1em;color:#4b5563;font-weight:600;margin-bottom:8px">Kalkulačka nákladů na dojíždění</div>
+    <h1 style="font-size:1.7em;margin-bottom:16px;background:linear-gradient(90deg,#f9fafb,#9ca3af);-webkit-background-clip:text;-webkit-text-fill-color:transparent">Roční náklady na dojíždění</h1>
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+      <span style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:6px 14px;font-size:14px;font-weight:600;color:#e5e7eb">${state.routeFrom}</span>
+      <span style="color:#4b5563;font-size:18px">→</span>
+      <span style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:6px 14px;font-size:14px;font-weight:600;color:#e5e7eb">${state.routeTo}</span>
+      <span style="background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.2);border-radius:10px;padding:6px 14px;font-size:13px;font-weight:600;color:#6ee7b7;font-family:'JetBrains Mono',monospace">${state.dist} km × 2 = ${dk} km/den</span>
+      <span style="background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.2);border-radius:10px;padding:6px 14px;font-size:13px;font-weight:600;color:#a5b4fc;font-family:'JetBrains Mono',monospace">${fmt(Math.round(monthKm))} km/měs ${info("km")}</span>
+    </div>
   </div>
 
-  <div class="panel" style="border-color:rgba(16,185,129,0.15)">
-    <label class="title" style="display:block;font-size:10px;text-transform:uppercase;letter-spacing:0.08em;color:#6b7280;margin-bottom:10px;font-weight:500">Trasa</label>
+  <div class="panel" style="border-color:rgba(16,185,129,0.15);display:flex;flex-wrap:wrap;align-items:center;gap:20px">
+    <div style="flex:1;min-width:200px"><label class="title" style="display:block;font-size:10px;text-transform:uppercase;letter-spacing:0.08em;color:#6b7280;margin-bottom:10px;font-weight:500">Trasa</label>
     <div class="route-row">
       <div class="route-field"><label style="font-size:10px;color:#6b7280;display:block;margin-bottom:4px">Odkud</label><input type="text" class="text-input" value="${state.routeFrom}" onchange="setField('routeFrom',this.value)" placeholder="nap\u0159. Krom\u011b\u0159\u00ed\u017e"></div>
       <div class="route-arrow">\u2192</div>
       <div class="route-field"><label style="font-size:10px;color:#6b7280;display:block;margin-bottom:4px">Kam</label><input type="text" class="text-input" value="${state.routeTo}" onchange="setField('routeTo',this.value)" placeholder="nap\u0159. Brno"></div>
       <div class="route-dist"><label style="font-size:10px;color:#6b7280;display:block;margin-bottom:4px">Vzd\u00e1lenost (km, jedn\u00edm sm\u011brem)</label><input type="number" class="text-input num-input" value="${state.dist}" min="0.1" max="500" step="0.1" onchange="setField('dist',parseFloat(this.value)||1)" style="width:100%"></div>
+    </div>
+    </div>
+    <div style="flex-shrink:0">
+      <label class="title" style="display:block;font-size:10px;text-transform:uppercase;letter-spacing:0.08em;color:#6b7280;margin-bottom:10px;font-weight:500">Home Office / t\u00fdden</label>
+      <div class="btn-row">${[0,1,2,3,4,5].map(h=>`<button class="btn ho-btn ${state.ho===h?"active-ho":""}" onclick="setState('ho',${h})">${h===5?'\ud83c\udfe0':h+'\u00d7'}</button>`).join("")}</div>
     </div>
   </div>
 
@@ -413,12 +425,6 @@ function render(){
     </div>`:"<p style=\"font-size:12px;color:#4b5563\">Amortizace je vypnut\u00e1 \u2013 n\u00e1klady nezahrnuj\u00ed ztr\u00e1tu hodnoty voz\u016f.</p>"}
   </div>
 
-  <div class="panel">
-    <div class="controls">
-      <div class="ctrl-group"><label class="title">Home Office / t\u00fdden</label><div class="btn-row">${[0,1,2,3].map(h=>`<button class="btn ho-btn ${state.ho===h?"active-ho":""}" onclick="setState('ho',${h})">${h}\u00d7</button>`).join("")}</div></div>
-    </div>
-  </div>
-
   <div class="cards">
     <div class="card amber"><div class="lbl">${state.carName} / rok ${info("fuel")}</div><div class="val mono amber">${fmt(last.tCum)} K\u010d</div></div>
     <div class="card sky"><div class="lbl">${tl} / rok ${info("energy")}</div><div class="val mono sky">${fmt(last.eCum)} K\u010d</div></div>
@@ -448,7 +454,7 @@ function render(){
     <h3 style="font-weight:700;color:#6ee7b7;margin-bottom:4px">M\u011bs\u00ed\u010dn\u00ed n\u00e1klady na doj\u00ed\u017ed\u011bn\u00ed autem do pr\u00e1ce ${info("salary")}</h3>
     <p style="font-size:10px;color:#6b7280;margin-bottom:12px">\u010cist\u00fd n\u00e1klad = kolik re\u00e1ln\u011b m\u011bs\u00ed\u010dn\u011b zaplat\u00edte. V z\u00e1vorce hrub\u00e1 mzda = kolik mus\u00edte vyd\u011blat, aby v\u00e1m po dan\u00edch a odvodech na to zbylo.</p>
     <table class="tbl">
-      <thead><tr><th style="text-align:left">Sc\u00e9n\u00e1\u0159</th>${[0,1,2,3].map(h=>`<th class="${state.ho===h?"hl":""}" style="color:${state.ho===h?"#6ee7b7":"#6b7280"}">${h===0?"0 HO":h+"\u00d7 HO"}</th>`).join("")}</tr></thead>
+      <thead><tr><th style="text-align:left">Sc\u00e9n\u00e1\u0159</th>${[0,1,2,3,4,5].map(h=>`<th class="${state.ho===h?"hl":""}" style="color:${state.ho===h?"#6ee7b7":"#6b7280"}">${h===5?'\ud83c\udfe0':h===0?"0 HO":h+"\u00d7 HO"}</th>`).join("")}</tr></thead>
       <tbody>
         <tr><td style="color:#fcd34d">\ud83d\ude97 ${state.carName}</td>${costs.map((r,i)=>`<td class="mono ${state.ho===i?"hl":""}" style="color:${state.ho===i?"#fff":"#9ca3af"}">${fmt(r.tNet)} K\u010d<div class="sub-val">(hrub\u00e1: ${fmt(r.tGross)} K\u010d)</div></td>`).join("")}</tr>
         <tr><td style="color:#7dd3fc">\u26a1 ${tl}</td>${costs.map((r,i)=>`<td class="mono ${state.ho===i?"hl":""}" style="color:${state.ho===i?"#fff":"#9ca3af"}">${fmt(r.eNet)} K\u010d<div class="sub-val">(hrub\u00e1: ${fmt(r.eGross)} K\u010d)</div></td>`).join("")}</tr>
@@ -488,7 +494,8 @@ function render(){
     <summary>P\u0159edpoklady a metodika</summary>
     <div class="inner">
       <strong>Trasa a km</strong><br>
-      ${state.dist} km jedním směrem (${state.routeFrom} \u2192 ${state.routeTo}). Denní dojezd = ${dk} km (tam + zpět). Měsíčně = ${fmt(Math.round(monthKm))} km (${Math.round(days)} pracovních dní po odečtení ${state.ho}\u00d7 HO). Předpoklad: 21 pracovních dní v měsíci.<br><br>
+      ${state.dist} km jedním směrem (${state.routeFrom} \u2192 ${state.routeTo}). Denní dojezd = ${dk} km (tam + zpět).<br>
+      Dny v kanceláři: 21 \u2013 ${state.ho} HO dní/týden \u00d7 4,2 = <b>${Math.round(days*10)/10} dní/měsíc</b> \u2192 ${fmt(Math.round(monthKm))} km/měsíc.<br><br>
 
       <strong>Palivo \u2013 ${state.carName}</strong><br>
       Vzorec: (měsíční km \u00f7 100) \u00d7 průměrná spotřeba \u00d7 cena paliva.<br>
